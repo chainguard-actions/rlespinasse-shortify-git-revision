@@ -1,0 +1,44 @@
+name: Test basic usage - shortify HEAD
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: action
+        uses: .
+        with:
+          name: GITHUB_SHA
+      - name: Assert revision output is set
+        env:
+          REVISION: ${{ steps.action.outputs.revision }}
+          SHORT: ${{ steps.action.outputs.short }}
+        run: |
+          echo "revision: $REVISION"
+          echo "short: $SHORT"
+          if [ -z "$REVISION" ]; then
+            echo "FAIL: revision output is empty"
+            exit 1
+          fi
+          if [ -z "$SHORT" ]; then
+            echo "FAIL: short output is empty"
+            exit 1
+          fi
+          # short should be a prefix of the full revision
+          if [[ "$REVISION" != "$SHORT"* ]]; then
+            echo "FAIL: short '$SHORT' is not a prefix of revision '$REVISION'"
+            exit 1
+          fi
+          echo "PASS: revision=$REVISION short=$SHORT"
+      - name: Assert environment variables are published
+        run: |
+          echo "GITHUB_SHA env: $GITHUB_SHA"
+          echo "GITHUB_SHA_SHORT env: $GITHUB_SHA_SHORT"
+          if [ -z "$GITHUB_SHA_SHORT" ]; then
+            echo "FAIL: GITHUB_SHA_SHORT env var is empty"
+            exit 1
+          fi
+          echo "PASS: GITHUB_SHA_SHORT=$GITHUB_SHA_SHORT"

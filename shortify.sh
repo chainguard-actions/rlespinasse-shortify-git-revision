@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # On MacOS,
+  # bash don't support substitution, so we use 'tr'
+  NAME=$(echo "$INPUT_NAME" | tr '[:lower:]' '[:upper:]')
+  PREFIX=$(echo "$INPUT_PREFIX" | tr '[:lower:]' '[:upper:]')
+else
+  NAME=${INPUT_NAME^^}
+  PREFIX=${INPUT_PREFIX^^}
+fi
+REVISION=${INPUT_REVISION:-${!NAME}}
+
+SHORT_LENGTH=""
+if [ "${INPUT_LENGTH}" != "" ]; then
+  if [ "${INPUT_LENGTH}" -eq "${INPUT_LENGTH}" ] 2>/dev/null; then
+    SHORT_LENGTH="=${INPUT_LENGTH}"
+  elif [ "${INPUT_CONTINUE_ON_ERROR}" == "false" ]; then
+    echo "::error ::Invalid length: ${INPUT_LENGTH}, should be a number"
+    exit 1
+  else
+    echo "::warning ::Invalid length: ${INPUT_LENGTH}, the default length will be used."
+  fi
+fi
+
+if [ -z "${REVISION}" ]; then
+  exit 0
+fi
+
+SHORT_PUBLICATION=false
+if [ "$(git cat-file -e "${REVISION}" 2>&1)" == "" ]; then
+  SHORT_VALUE=$(git rev-parse --short"${SHORT_LENGTH}" "${REVISION}")
+  SHORT_PUBLICATION="true"
+elif [ "${INPUT_SHORT_ON_ERROR}" == "true" ]; then
+  if [ -n "${INPUT_LENGTH}" ]; then
+    SHORT_VALUE=$(cut -c1-"${INPUT_LENGTH}" <<<"${REVISION}")
+    SHORT_PUBLICATION="true"
+  else
+    echo "::error ::The input 'length' is mandatory with 'short-on-error' set to 'true'"
+    exit 1
+  fi
+elif [ "${INPUT_CONTINUE_ON_ERROR}" == "false" ]; then
+  echo "::error ::Invalid revision: ${REVISION} from ${NAME}"
+  exit 1
+fi
+
+if [ "${SHORT_PUBLICATION}" == "true" ]; then
+  SAFE_REVISION=$(printf '%s' "${REVISION}" | tr -d '\n\r')
+  SAFE_SHORT_VALUE=$(printf '%s' "${SHORT_VALUE}" | tr -d '\n\r')
+  SAFE_PREFIX=$(printf '%s' "${PREFIX}" | tr -d '\n\r')
+  SAFE_NAME=$(printf '%s' "${NAME}" | tr -d '\n\r')
+
+  if [ -f "$GITHUB_OUTPUT" ]; then
+    echo "revision=${SAFE_REVISION}" >> "$GITHUB_OUTPUT"
+    echo "short=${SAFE_SHORT_VALUE}" >> "$GITHUB_OUTPUT"
+  else
+    echo "::set-output name=revision::${SAFE_REVISION}"
+    echo "::set-output name=short::${SAFE_SHORT_VALUE}"
+  fi
+
+  if [ "${INPUT_PUBLISH_ENV}" == "true" ]; then
+    {
+      echo "${SAFE_PREFIX}${SAFE_NAME}=${SAFE_REVISION}"
+      echo "${SAFE_PREFIX}${SAFE_NAME}_SHORT=${SAFE_SHORT_VALUE}"
+    } >>"$GITHUB_ENV"
+  fi
+fi

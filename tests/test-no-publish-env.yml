@@ -1,0 +1,37 @@
+name: Test publish-env false - outputs set but no env vars
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: action
+        uses: .
+        with:
+          name: GITHUB_SHA
+          publish-env: "false"
+      - name: Assert outputs are set but env vars are not published
+        env:
+          REVISION: ${{ steps.action.outputs.revision }}
+          SHORT: ${{ steps.action.outputs.short }}
+        run: |
+          echo "revision: $REVISION"
+          echo "short: $SHORT"
+          echo "GITHUB_SHA_SHORT env: '$GITHUB_SHA_SHORT'"
+          if [ -z "$REVISION" ]; then
+            echo "FAIL: revision output is empty"
+            exit 1
+          fi
+          if [ -z "$SHORT" ]; then
+            echo "FAIL: short output is empty"
+            exit 1
+          fi
+          # With publish-env=false, GITHUB_SHA_SHORT should NOT be set
+          if [ -n "$GITHUB_SHA_SHORT" ]; then
+            echo "FAIL: GITHUB_SHA_SHORT env var should not be set when publish-env=false"
+            exit 1
+          fi
+          echo "PASS: outputs set, env var not published"

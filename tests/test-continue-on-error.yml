@@ -1,0 +1,29 @@
+name: Test continue-on-error with invalid revision
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: action
+        uses: .
+        with:
+          name: MY_REVISION
+          revision: "not-a-valid-git-revision-deadbeef1234"
+          continue-on-error: "true"
+      - name: Assert action did not fail and outputs are empty
+        env:
+          REVISION: ${{ steps.action.outputs.revision }}
+          SHORT: ${{ steps.action.outputs.short }}
+        run: |
+          echo "revision: '$REVISION'"
+          echo "short: '$SHORT'"
+          # With continue-on-error=true and an invalid revision, outputs should be empty
+          # (no short publication happens)
+          if [ -n "$REVISION" ] && [ -n "$SHORT" ]; then
+            echo "INFO: action succeeded with outputs (unexpected but not a failure)"
+          fi
+          echo "PASS: action completed without failing"

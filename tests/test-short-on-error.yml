@@ -1,0 +1,42 @@
+name: Test short-on-error with invalid revision
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: action
+        uses: .
+        with:
+          name: MY_REVISION
+          revision: "abcdef1234567890abcdef1234567890abcdef12"
+          short-on-error: "true"
+          continue-on-error: "true"
+          length: "7"
+      - name: Assert short output is truncated to length
+        env:
+          REVISION: ${{ steps.action.outputs.revision }}
+          SHORT: ${{ steps.action.outputs.short }}
+        run: |
+          echo "revision: '$REVISION'"
+          echo "short: '$SHORT'"
+          if [ -z "$SHORT" ]; then
+            echo "FAIL: short output is empty, expected truncated value"
+            exit 1
+          fi
+          SHORT_LEN=${#SHORT}
+          echo "short length: $SHORT_LEN"
+          if [ "$SHORT_LEN" -ne 7 ]; then
+            echo "FAIL: expected short length 7, got $SHORT_LEN"
+            exit 1
+          fi
+          # The short should be the first 7 chars of the revision
+          EXPECTED=$(echo "abcdef1234567890abcdef1234567890abcdef12" | cut -c1-7)
+          if [ "$SHORT" != "$EXPECTED" ]; then
+            echo "FAIL: expected short '$EXPECTED', got '$SHORT'"
+            exit 1
+          fi
+          echo "PASS: short=$SHORT"

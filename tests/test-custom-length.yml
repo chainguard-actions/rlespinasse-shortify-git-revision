@@ -1,0 +1,33 @@
+name: Test custom length shortify
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: action
+        uses: .
+        with:
+          name: GITHUB_SHA
+          length: "8"
+      - name: Assert short output has correct length
+        env:
+          SHORT: ${{ steps.action.outputs.short }}
+          REVISION: ${{ steps.action.outputs.revision }}
+        run: |
+          echo "revision: $REVISION"
+          echo "short: $SHORT"
+          if [ -z "$SHORT" ]; then
+            echo "FAIL: short output is empty"
+            exit 1
+          fi
+          SHORT_LEN=${#SHORT}
+          echo "short length: $SHORT_LEN"
+          if [ "$SHORT_LEN" -ne 8 ]; then
+            echo "FAIL: expected short length 8, got $SHORT_LEN"
+            exit 1
+          fi
+          echo "PASS: short=$SHORT has length $SHORT_LEN"

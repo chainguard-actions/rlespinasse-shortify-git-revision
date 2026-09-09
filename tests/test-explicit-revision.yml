@@ -1,0 +1,40 @@
+name: Test explicit revision input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Get HEAD SHA
+        id: get-sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - id: action
+        uses: .
+        with:
+          name: MY_REVISION
+          revision: ${{ steps.get-sha.outputs.sha }}
+      - name: Assert outputs match explicit revision
+        env:
+          REVISION: ${{ steps.action.outputs.revision }}
+          SHORT: ${{ steps.action.outputs.short }}
+          FULL_SHA: ${{ steps.get-sha.outputs.sha }}
+        run: |
+          echo "full sha: $FULL_SHA"
+          echo "revision: $REVISION"
+          echo "short: $SHORT"
+          if [ "$REVISION" != "$FULL_SHA" ]; then
+            echo "FAIL: revision '$REVISION' does not match expected '$FULL_SHA'"
+            exit 1
+          fi
+          if [ -z "$SHORT" ]; then
+            echo "FAIL: short output is empty"
+            exit 1
+          fi
+          if [[ "$FULL_SHA" != "$SHORT"* ]]; then
+            echo "FAIL: short '$SHORT' is not a prefix of full sha '$FULL_SHA'"
+            exit 1
+          fi
+          echo "PASS: revision=$REVISION short=$SHORT"

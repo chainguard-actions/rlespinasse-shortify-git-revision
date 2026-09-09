@@ -1,0 +1,270 @@
+name: Shortify Git Revision
+on:
+  push:
+    branches:
+      - v1.x
+  pull_request:
+
+permissions: {}
+
+jobs:
+  os-testing:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    permissions: {}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3
+
+      # Test 1
+      - name: Shortify an existing git revision
+        id: shortify-an-existing-git-revision
+        uses: ./
+        with:
+          name: ROOT_COMMIT
+          revision: 88428f56bd9d2751c47106bedfd148162dfa50b8
+      - name: Validate // Shortify an existing git revision
+        env:
+          ROOT_COMMIT: ${{ env.ROOT_COMMIT }}
+          ROOT_COMMIT_SHORT: ${{ env.ROOT_COMMIT_SHORT }}
+          STEP_REVISION: ${{ steps.shortify-an-existing-git-revision.outputs.revision }}
+          STEP_SHORT: ${{ steps.shortify-an-existing-git-revision.outputs.short }}
+        run: |
+          [[ "$ROOT_COMMIT" == "88428f56bd9d2751c47106bedfd148162dfa50b8" ]]
+          [[ "$ROOT_COMMIT_SHORT" == "88428f5" ]]
+          [[ "$ROOT_COMMIT" == "$STEP_REVISION" ]]
+          [[ "$ROOT_COMMIT_SHORT" == "$STEP_SHORT" ]]
+        shell: bash
+
+      # Test 2
+      - name: Shortify an existing git revision with prefix
+        uses: ./
+        with:
+          name: ROOT_COMMIT
+          revision: 88428f56bd9d2751c47106bedfd148162dfa50b8
+          prefix: CI_
+      - name: Validate // Shortify an existing git revision with prefix
+        env:
+          ROOT_COMMIT: ${{ env.ROOT_COMMIT }}
+          ROOT_COMMIT_SHORT: ${{ env.ROOT_COMMIT_SHORT }}
+          CI_ROOT_COMMIT: ${{ env.CI_ROOT_COMMIT }}
+          CI_ROOT_COMMIT_SHORT: ${{ env.CI_ROOT_COMMIT_SHORT }}
+        run: |
+          [[ "$ROOT_COMMIT" == "$CI_ROOT_COMMIT" ]]
+          [[ "$ROOT_COMMIT_SHORT" == "$CI_ROOT_COMMIT_SHORT" ]]
+        shell: bash
+
+      # Test 3
+      - name: Shortify an existing git revision from an env variable
+        uses: ./
+        with:
+          name: ENV_VAR_COMMIT
+        env:
+          ENV_VAR_COMMIT: 88428f56bd9d2751c47106bedfd148162dfa50b8
+      - name: Validate // Shortify an existing git revision from an env variable
+        env:
+          ENV_VAR_COMMIT: ${{ env.ENV_VAR_COMMIT }}
+          ENV_VAR_COMMIT_SHORT: ${{ env.ENV_VAR_COMMIT_SHORT }}
+        run: |
+          [[ "$ENV_VAR_COMMIT" == "88428f56bd9d2751c47106bedfd148162dfa50b8" ]]
+          [[ "$ENV_VAR_COMMIT_SHORT" == "88428f5" ]]
+        shell: bash
+
+      # Test 4
+      - name: Shortify a missing git revision
+        uses: ./
+        with:
+          name: MISSING_REVISION
+          revision: ""
+      - name: Validate // Shortify a missing git revision
+        env:
+          MISSING_REVISION: ${{ env.MISSING_REVISION }}
+          MISSING_REVISION_SHORT: ${{ env.MISSING_REVISION_SHORT }}
+        run: |
+          [[ -z "$MISSING_REVISION" ]]
+          [[ -z "$MISSING_REVISION_SHORT" ]]
+        shell: bash
+
+      # Test 5
+      - id: test-shortify-wrong-git-revision
+        name: Shortify a wrong git revision
+        uses: ./
+        with:
+          name: WRONG_REVISION
+          revision: wrongwrongwrongwrongwrongwrongwrongwrong
+        continue-on-error: true
+      - name: Validate // Shortify a wrong git revision
+        env:
+          WRONG_REVISION: ${{ env.WRONG_REVISION }}
+          WRONG_REVISION_SHORT: ${{ env.WRONG_REVISION_SHORT }}
+          STEP_OUTCOME: ${{ steps.test-shortify-wrong-git-revision.outcome }}
+          STEP_CONCLUSION: ${{ steps.test-shortify-wrong-git-revision.conclusion }}
+        run: |
+          [[ -z "$WRONG_REVISION" ]]
+          [[ -z "$WRONG_REVISION_SHORT" ]]
+          [[ "$STEP_OUTCOME" == "failure" ]]
+          [[ "$STEP_CONCLUSION" == "success" ]]
+        shell: bash
+
+      # Test 6
+      - name: Shortify a wrong git revision without failing
+        uses: ./
+        with:
+          name: WRONG_AND_MISSING_REVISION
+          revision: wrongwrongwrongwrongwrongwrongwrongwrong
+          continue-on-error: true
+      - name: Validate // Shortify a wrong git revision without failing
+        env:
+          WRONG_AND_MISSING_REVISION: ${{ env.WRONG_AND_MISSING_REVISION }}
+          WRONG_AND_MISSING_REVISION_SHORT: ${{ env.WRONG_AND_MISSING_REVISION_SHORT }}
+        run: |
+          [[ -z "$WRONG_AND_MISSING_REVISION" ]]
+          [[ -z "$WRONG_AND_MISSING_REVISION_SHORT" ]]
+        shell: bash
+
+      # Test 7
+      - name: Shortify a git revision with specific length
+        uses: ./
+        with:
+          name: SIZED_REVISION
+          revision: 88428f56bd9d2751c47106bedfd148162dfa50b8
+          length: 10
+      - name: Validate // Shortify a git revision with specific length
+        env:
+          SIZED_REVISION: ${{ env.SIZED_REVISION }}
+          SIZED_REVISION_SHORT: ${{ env.SIZED_REVISION_SHORT }}
+        run: |
+          [[ "$SIZED_REVISION" == "88428f56bd9d2751c47106bedfd148162dfa50b8" ]]
+          [[ "$SIZED_REVISION_SHORT" == "88428f56bd" ]]
+        shell: bash
+
+      # Test 8
+      - id: test-shortify-git-revision-with-wrong-length
+        name: Shortify a git revision with wrong length
+        uses: ./
+        with:
+          name: WRONGFULLY_SIZED_REVISION
+          revision: 88428f56bd9d2751c47106bedfd148162dfa50b8
+          length: "not_a_number"
+        continue-on-error: true
+      - name: Validate // Shortify a git revision with wrong length
+        env:
+          WRONGFULLY_SIZED_REVISION: ${{ env.WRONGFULLY_SIZED_REVISION }}
+          WRONGFULLY_SIZED_REVISION_SHORT: ${{ env.WRONGFULLY_SIZED_REVISION_SHORT }}
+          STEP_OUTCOME: ${{ steps.test-shortify-git-revision-with-wrong-length.outcome }}
+          STEP_CONCLUSION: ${{ steps.test-shortify-git-revision-with-wrong-length.conclusion }}
+        run: |
+          [[ -z "$WRONGFULLY_SIZED_REVISION" ]]
+          [[ -z "$WRONGFULLY_SIZED_REVISION_SHORT" ]]
+          [[ "$STEP_OUTCOME" == "failure" ]]
+          [[ "$STEP_CONCLUSION" == "success" ]]
+        shell: bash
+
+      # Test 9
+      - name: Shortify a git revision with wrong length without failing
+        uses: ./
+        with:
+          name: WRONGFULLY_SIZED_REVISION
+          revision: 88428f56bd9d2751c47106bedfd148162dfa50b8
+          length: "not_a_number"
+          continue-on-error: true
+      - name: Validate // Shortify a git revision with wrong length without failing
+        env:
+          WRONGFULLY_SIZED_REVISION: ${{ env.WRONGFULLY_SIZED_REVISION }}
+          WRONGFULLY_SIZED_REVISION_SHORT: ${{ env.WRONGFULLY_SIZED_REVISION_SHORT }}
+        run: |
+          [[ "$WRONGFULLY_SIZED_REVISION" == "88428f56bd9d2751c47106bedfd148162dfa50b8" ]]
+          [[ "$WRONGFULLY_SIZED_REVISION_SHORT" == "88428f5" ]]
+        shell: bash
+
+      # Test 10
+      - name: Shortify an existing git revision without env publication
+        id: shortify-an-existing-git-revision-without-env-publication
+        uses: ./
+        with:
+          name: SHORT_WITHOUT_ENV_PUBLICATION
+          revision: 88428f56bd9d2751c47106bedfd148162dfa50b8
+          publish-env: false
+      - name: Validate // Shortify an existing git revision without env publication
+        env:
+          SHORT_WITHOUT_ENV_PUBLICATION: ${{ env.SHORT_WITHOUT_ENV_PUBLICATION }}
+          STEP_REVISION: ${{ steps.shortify-an-existing-git-revision-without-env-publication.outputs.revision }}
+          STEP_SHORT: ${{ steps.shortify-an-existing-git-revision-without-env-publication.outputs.short }}
+        run: |
+          [[ -z "$SHORT_WITHOUT_ENV_PUBLICATION" ]]
+          [[ -z "$SHORT_WITHOUT_ENV_PUBLICATION" ]]
+          [[ "$STEP_REVISION" == "88428f56bd9d2751c47106bedfd148162dfa50b8" ]]
+          [[ "$STEP_SHORT" == "88428f5" ]]
+        shell: bash
+
+  error-os-testing:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    permissions: {}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3
+        with:
+          path: this-action
+          ref: ${{ github.ref }}
+
+      # Test 1
+      - name: Continue on error
+        uses: ./this-action
+        with:
+          name: ROOT_COMMIT
+          revision: 88428f56bd9d2751c47106bedfd148162dfa50b8
+          continue-on-error: true
+      - name: Validate // Continue on error
+        env:
+          ROOT_COMMIT: ${{ env.ROOT_COMMIT }}
+          ROOT_COMMIT_SHORT: ${{ env.ROOT_COMMIT_SHORT }}
+        run: |
+          [[ "$ROOT_COMMIT" == "" ]]
+          [[ "$ROOT_COMMIT_SHORT" == "" ]]
+        shell: bash
+
+      # Test 2
+      - name: Short on error
+        id: short-on-error
+        uses: ./this-action
+        with:
+          name: ROOT_COMMIT
+          revision: 88428f56bd9d2751c47106bedfd148162dfa50b8
+          short-on-error: true
+          length: 7
+      - name: Validate // Short on error
+        env:
+          ROOT_COMMIT: ${{ env.ROOT_COMMIT }}
+          ROOT_COMMIT_SHORT: ${{ env.ROOT_COMMIT_SHORT }}
+          STEP_REVISION: ${{ steps.short-on-error.outputs.revision }}
+          STEP_SHORT: ${{ steps.short-on-error.outputs.short }}
+        run: |
+          [[ "$ROOT_COMMIT" == "88428f56bd9d2751c47106bedfd148162dfa50b8" ]]
+          [[ "$ROOT_COMMIT_SHORT" == "88428f5" ]]
+          [[ "$ROOT_COMMIT" == "$STEP_REVISION" ]]
+          [[ "$ROOT_COMMIT_SHORT" == "$STEP_SHORT" ]]
+        shell: bash
+
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: release-${{ github.ref }}
+    needs:
+      - os-testing
+      - error-os-testing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3
+
+      # Release
+      - name: Release this GitHub Action
+        uses: rlespinasse/release-that@f4912d4053839003bb368e9c7067b071ccb1c146 # v1
