@@ -9,6 +9,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
 | v1.6.0 | [`v1.6.0`](https://github.com/chainguard-actions/rlespinasse-shortify-git-revision/tree/v1.6.0) | [`c90ba70`](https://github.com/rlespinasse/shortify-git-revision/commit/c90ba7007ef6c152254d10b9f1a327966ab13077) |
+| v1.6.1 | [`v1.6.1`](https://github.com/chainguard-actions/rlespinasse-shortify-git-revision/tree/v1.6.1) | [`405d11c`](https://github.com/rlespinasse/shortify-git-revision/commit/405d11cea05b4c60f6e3c40f59976143d4ec0c41) |
 
 ## Privacy
 
