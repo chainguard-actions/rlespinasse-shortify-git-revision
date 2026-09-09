@@ -1,0 +1,71 @@
+name: Test basic usage - shortify HEAD revision
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Get HEAD SHA for comparison
+        id: head
+        run: |
+          SHA=$(git rev-parse HEAD)
+          SHORT=$(git rev-parse --short HEAD)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "short=$SHORT" >> "$GITHUB_OUTPUT"
+
+      - id: action
+        uses: .
+        with:
+          name: MY_REVISION
+          revision: ${{ steps.head.outputs.sha }}
+
+      - name: Assert revision output matches HEAD SHA
+        env:
+          ACTUAL_REVISION: ${{ steps.action.outputs.revision }}
+          EXPECTED_REVISION: ${{ steps.head.outputs.sha }}
+        run: |
+          echo "actual revision: $ACTUAL_REVISION"
+          echo "expected revision: $EXPECTED_REVISION"
+          if [ "$ACTUAL_REVISION" != "$EXPECTED_REVISION" ]; then
+            echo "FAIL: revision output mismatch"
+            exit 1
+          fi
+          echo "PASS: revision output matches"
+
+      - name: Assert short output is non-empty and matches git short
+        env:
+          ACTUAL_SHORT: ${{ steps.action.outputs.short }}
+          EXPECTED_SHORT: ${{ steps.head.outputs.short }}
+        run: |
+          echo "actual short: $ACTUAL_SHORT"
+          echo "expected short: $EXPECTED_SHORT"
+          if [ -z "$ACTUAL_SHORT" ]; then
+            echo "FAIL: short output is empty"
+            exit 1
+          fi
+          if [ "$ACTUAL_SHORT" != "$EXPECTED_SHORT" ]; then
+            echo "FAIL: short output mismatch"
+            exit 1
+          fi
+          echo "PASS: short output matches"
+
+      - name: Assert environment variable was published
+        env:
+          EXPECTED_REVISION: ${{ steps.head.outputs.sha }}
+          EXPECTED_SHORT: ${{ steps.head.outputs.short }}
+        run: |
+          echo "MY_REVISION env: $MY_REVISION"
+          echo "MY_REVISION_SHORT env: $MY_REVISION_SHORT"
+          if [ "$MY_REVISION" != "$EXPECTED_REVISION" ]; then
+            echo "FAIL: MY_REVISION env var mismatch"
+            exit 1
+          fi
+          if [ "$MY_REVISION_SHORT" != "$EXPECTED_SHORT" ]; then
+            echo "FAIL: MY_REVISION_SHORT env var mismatch"
+            exit 1
+          fi
+          echo "PASS: environment variables published correctly"

@@ -1,0 +1,36 @@
+name: Test continue-on-error with invalid revision
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          name: INVALID_REV
+          revision: "not-a-valid-git-revision-deadbeef1234567890"
+          continue-on-error: "true"
+
+      - name: Assert action succeeded (continue-on-error=true)
+        run: |
+          echo "Action completed without failing — PASS"
+
+      - name: Assert outputs are empty (invalid revision not shortified)
+        env:
+          ACTUAL_REVISION: ${{ steps.action.outputs.revision }}
+          ACTUAL_SHORT: ${{ steps.action.outputs.short }}
+        run: |
+          echo "revision output: '$ACTUAL_REVISION'"
+          echo "short output: '$ACTUAL_SHORT'"
+          if [ -n "$ACTUAL_REVISION" ]; then
+            echo "FAIL: expected empty revision output for invalid revision"
+            exit 1
+          fi
+          if [ -n "$ACTUAL_SHORT" ]; then
+            echo "FAIL: expected empty short output for invalid revision"
+            exit 1
+          fi
+          echo "PASS: outputs are empty as expected for invalid revision with continue-on-error"

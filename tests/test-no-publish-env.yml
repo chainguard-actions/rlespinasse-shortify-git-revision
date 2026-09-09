@@ -1,0 +1,58 @@
+name: Test publish-env=false skips environment variable publishing
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Get HEAD SHA
+        id: head
+        run: |
+          SHA=$(git rev-parse HEAD)
+          SHORT=$(git rev-parse --short HEAD)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "short=$SHORT" >> "$GITHUB_OUTPUT"
+
+      - id: action
+        uses: .
+        with:
+          name: NO_PUBLISH_COMMIT
+          revision: ${{ steps.head.outputs.sha }}
+          publish-env: "false"
+
+      - name: Assert step outputs are still set
+        env:
+          ACTUAL_REVISION: ${{ steps.action.outputs.revision }}
+          ACTUAL_SHORT: ${{ steps.action.outputs.short }}
+          EXPECTED_REVISION: ${{ steps.head.outputs.sha }}
+          EXPECTED_SHORT: ${{ steps.head.outputs.short }}
+        run: |
+          echo "revision output: $ACTUAL_REVISION"
+          echo "short output: $ACTUAL_SHORT"
+          if [ "$ACTUAL_REVISION" != "$EXPECTED_REVISION" ]; then
+            echo "FAIL: revision output mismatch"
+            exit 1
+          fi
+          if [ "$ACTUAL_SHORT" != "$EXPECTED_SHORT" ]; then
+            echo "FAIL: short output mismatch"
+            exit 1
+          fi
+          echo "PASS: step outputs are set correctly"
+
+      - name: Assert environment variables are NOT published
+        run: |
+          echo "NO_PUBLISH_COMMIT env: '${NO_PUBLISH_COMMIT}'"
+          echo "NO_PUBLISH_COMMIT_SHORT env: '${NO_PUBLISH_COMMIT_SHORT}'"
+          if [ -n "${NO_PUBLISH_COMMIT}" ]; then
+            echo "FAIL: NO_PUBLISH_COMMIT env var should not be set when publish-env=false"
+            exit 1
+          fi
+          if [ -n "${NO_PUBLISH_COMMIT_SHORT}" ]; then
+            echo "FAIL: NO_PUBLISH_COMMIT_SHORT env var should not be set when publish-env=false"
+            exit 1
+          fi
+          echo "PASS: environment variables not published as expected"

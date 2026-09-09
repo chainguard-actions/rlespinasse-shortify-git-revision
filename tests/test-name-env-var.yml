@@ -1,0 +1,58 @@
+name: Test name-based revision via environment variable
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set GITHUB_SHA env var for the action to pick up
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "GITHUB_SHA=$SHA" >> "$GITHUB_ENV"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+        id: head
+
+      - id: action
+        uses: .
+        with:
+          name: GITHUB_SHA
+          # no revision input — action reads from env var named by 'name'
+
+      - name: Assert revision output is set
+        env:
+          ACTUAL_REVISION: ${{ steps.action.outputs.revision }}
+        run: |
+          echo "actual revision: $ACTUAL_REVISION"
+          if [ -z "$ACTUAL_REVISION" ]; then
+            echo "FAIL: revision output is empty"
+            exit 1
+          fi
+          echo "PASS: revision output is non-empty"
+
+      - name: Assert short output is non-empty
+        env:
+          ACTUAL_SHORT: ${{ steps.action.outputs.short }}
+        run: |
+          echo "actual short: $ACTUAL_SHORT"
+          if [ -z "$ACTUAL_SHORT" ]; then
+            echo "FAIL: short output is empty"
+            exit 1
+          fi
+          echo "PASS: short output is non-empty"
+
+      - name: Assert short is shorter than full SHA
+        env:
+          ACTUAL_REVISION: ${{ steps.action.outputs.revision }}
+          ACTUAL_SHORT: ${{ steps.action.outputs.short }}
+        run: |
+          echo "revision length: ${#ACTUAL_REVISION}"
+          echo "short length: ${#ACTUAL_SHORT}"
+          if [ "${#ACTUAL_SHORT}" -ge "${#ACTUAL_REVISION}" ]; then
+            echo "FAIL: short should be shorter than full revision"
+            exit 1
+          fi
+          echo "PASS: short is shorter than full revision"

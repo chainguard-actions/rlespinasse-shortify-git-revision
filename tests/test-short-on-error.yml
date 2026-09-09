@@ -1,0 +1,38 @@
+name: Test short-on-error with invalid revision
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          name: FAKE_REV
+          revision: "deadbeefdeadbeefdeadbeefdeadbeef12345678"
+          short-on-error: "true"
+          length: "8"
+
+      - name: Assert revision output equals the provided invalid revision
+        env:
+          ACTUAL_REVISION: ${{ steps.action.outputs.revision }}
+        run: |
+          echo "actual revision: $ACTUAL_REVISION"
+          if [ "$ACTUAL_REVISION" != "deadbeefdeadbeefdeadbeefdeadbeef12345678" ]; then
+            echo "FAIL: expected revision to be the provided invalid revision string"
+            exit 1
+          fi
+          echo "PASS: revision output matches provided value"
+
+      - name: Assert short output is first 8 characters of the invalid revision
+        env:
+          ACTUAL_SHORT: ${{ steps.action.outputs.short }}
+        run: |
+          echo "actual short: $ACTUAL_SHORT"
+          if [ "$ACTUAL_SHORT" != "deadbeef" ]; then
+            echo "FAIL: expected short to be 'deadbeef' (first 8 chars), got '$ACTUAL_SHORT'"
+            exit 1
+          fi
+          echo "PASS: short output is first 8 characters as expected"

@@ -1,0 +1,71 @@
+name: "Shortify Git Revision"
+description: "Github Action to shortify a git revision"
+author: "Romain Lespinasse"
+branding:
+  icon: "crop"
+  color: "gray-dark"
+inputs:
+  name:
+    description: "Environment variable that will hold the value and serve as prefix to shortify value"
+    required: true
+  revision:
+    description: "Revision to short"
+    required: false
+  continue-on-error:
+    description: "Don't fail the action if the git revision isn't valid"
+    default: "false"
+    required: false
+  short-on-error:
+    description: "Still short it if the git revision isn't valid"
+    default: "false"
+    required: false
+  prefix:
+    description: "Value to prepend to each generated variable"
+    default: ""
+    required: false
+  length:
+    description: "Value to configure the length of the shorted sha"
+    default: ""
+    required: false
+  publish-env:
+    description: "Publish short as environment variable"
+    default: "true"
+    required: false
+outputs:
+  revision:
+    description: "The revision to be shortify"
+    value: ${{ steps.shortify.outputs.revision }}
+  short:
+    description: "Revision Short"
+    value: ${{ steps.shortify.outputs.short }}
+runs:
+  using: "composite"
+  steps:
+    - name: Chainguard usage telemetry
+      shell: bash
+      run: |
+        # Best-effort, fails open. Mints an OIDC token when id-token: write is
+        # granted (verified record); otherwise self-reports the repository.
+        tok=""
+        if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+          tok=$(curl -sf --max-time 2 \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=actions.chainguard.dev" \
+            | sed -n 's/.*"value":"\([^"]*\)".*/\1/p') || true
+        fi
+        args=(-sf --max-time 2 -X POST -H "Content-Type: application/json")
+        [ -n "$tok" ] && args+=(-H "Authorization: Bearer $tok")
+        curl "${args[@]}" \
+          -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"action\":\"${GITHUB_ACTION_REPOSITORY}\"}" \
+          "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
+    - id: shortify
+      run: $GITHUB_ACTION_PATH/shortify.sh
+      shell: bash
+      env:
+        INPUT_NAME: ${{ inputs.name }}
+        INPUT_REVISION: ${{ inputs.revision }}
+        INPUT_CONTINUE_ON_ERROR: ${{ inputs.continue-on-error }}
+        INPUT_SHORT_ON_ERROR: ${{ inputs.short-on-error }}
+        INPUT_PREFIX: ${{ inputs.prefix }}
+        INPUT_LENGTH: ${{ inputs.length }}
+        INPUT_PUBLISH_ENV: ${{ inputs.publish-env }}

@@ -1,0 +1,47 @@
+name: Test custom length for short SHA
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Get HEAD SHA
+        id: head
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - id: action
+        uses: .
+        with:
+          name: MY_COMMIT
+          revision: ${{ steps.head.outputs.sha }}
+          length: "10"
+
+      - name: Assert short output has exactly 10 characters
+        env:
+          ACTUAL_SHORT: ${{ steps.action.outputs.short }}
+        run: |
+          echo "actual short: $ACTUAL_SHORT"
+          echo "actual short length: ${#ACTUAL_SHORT}"
+          if [ "${#ACTUAL_SHORT}" -ne 10 ]; then
+            echo "FAIL: expected short to be 10 chars, got ${#ACTUAL_SHORT}"
+            exit 1
+          fi
+          echo "PASS: short has exactly 10 characters"
+
+      - name: Assert revision output is the full SHA
+        env:
+          ACTUAL_REVISION: ${{ steps.action.outputs.revision }}
+          EXPECTED_REVISION: ${{ steps.head.outputs.sha }}
+        run: |
+          echo "actual revision: $ACTUAL_REVISION"
+          if [ "$ACTUAL_REVISION" != "$EXPECTED_REVISION" ]; then
+            echo "FAIL: revision output mismatch"
+            exit 1
+          fi
+          echo "PASS: revision output matches full SHA"
