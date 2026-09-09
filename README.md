@@ -1,0 +1,1 @@
+# rlespinasse-shortify-git-revision
